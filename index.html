@@ -376,11 +376,12 @@
 </div>
 
 <script>
-    // CONFIGURAÇÕES DO SUPABASE — COLOQUE SEUS DADOS AQUI!
-    const SUPABASE_URL = "https://kyylikreczszuzumrqrl.supabase.co/rest/v1/";
-    const SUPABASE_KEY = "sb_publishable_fcY6S9xKkIeqPpKWP5Y7Bg_xUdTT63d";
+   // CONFIGURAÇÕES DO SUPABASE — CORRIGIDO
+    const SUPABASE_URL = "https://kyylikreczszuzumrqrl.supabase.co"; // Apenas a URL base, sem o /rest/v1/
+    const SUPABASE_KEY = "sb_publishable_fcY6S9xKkIeqPpKWP5Y7Bg_xUdTT63d"; // Certifique-se de que é a chave 'anon public'
 
-    const supabase = createClient.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // O comando correto é apenas supabase.createClient
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let projects = [];
     let currentUser = null;

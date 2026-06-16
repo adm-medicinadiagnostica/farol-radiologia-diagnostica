@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAROL - RADIOLOGIA DIAGNÓSTICA</title>
-    <!-- Incluindo a biblioteca do Supabase -->
+    <title>FAROL - MEDICINA DIAGNÓSTICA</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -16,132 +15,56 @@
             --border: #dddddd;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 20px; }
 
-        body {
-            background-color: var(--bg);
-            color: var(--text);
-            padding: 20px;
-        }
+        /* Telas de Autenticação */
+        .auth-container { max-width: 400px; margin: 80px auto; background: white; padding: 30px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; }
+        .auth-container h2 { color: var(--primary); margin-bottom: 20px; font-size: 22px; }
+        .auth-container p { font-size: 13px; color: #666; margin-bottom: 15px; }
+        .auth-container .logo-placeholder { font-weight: bold; color: var(--primary); font-size: 18px; margin-bottom: 20px; border-bottom: 2px solid var(--bg); padding-bottom: 10px; }
+        
+        /* Painel Principal (Invisível antes do login) */
+        #main-app { display: none; }
 
-        header {
-            background-color: var(--primary);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
+        header { background-color: var(--primary); color: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; }
         header .title-area { flex: 1; min-width: 280px; }
         header h1 { font-size: 24px; margin-bottom: 5px; }
         header p { font-size: 14px; opacity: 0.9; }
 
-        .filter-area {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 10px 15px;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        .user-badge { background: rgba(255,255,255,0.2); padding: 8px 12px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 10px; font-weight: 600; }
+        .btn-logout { background: #dc3545; color: white; padding: 4px 10px; border-radius: 4px; font-size: 11px; text-transform: uppercase; border: none; cursor: pointer; }
 
+        .filter-area { background: rgba(255, 255, 255, 0.2); padding: 10px 15px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
         .filter-area label { font-size: 14px; font-weight: bold; }
-        .filter-area select {
-            padding: 6px 12px;
-            border-radius: 4px;
-            border: none;
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--primary-dark);
-            cursor: pointer;
-        }
+        .filter-area select { padding: 6px 12px; border-radius: 4px; border: none; font-size: 14px; font-weight: 600; color: var(--primary-dark); cursor: pointer; }
 
-        .dashboard-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-bottom: 20px;
-        }
+        /* Área do Administrador (Gestão de Usuários) */
+        #admin-area { display: none; background: #fff3cd; border: 1px solid #ffeba2; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+        #admin-area h3 { color: #856404; font-size: 16px; margin-bottom: 10px; }
+        .user-list { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .user-list th, .user-list td { padding: 8px; text-align: left; border-bottom: 1px solid #ffeba2; color: #333; }
+        .btn-approve { background: #28a745; color: white; padding: 4px 10px; font-size: 11px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; }
 
-        .db-card {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            text-align: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
+        .dashboard-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .db-card { background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border); text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .db-card h3 { font-size: 13px; color: #666; text-transform: uppercase; margin-bottom: 5px; }
         .db-card .value { font-size: 24px; font-weight: bold; }
 
-        .search-filter-bar {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            margin-bottom: 15px;
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            align-items: center;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
+        .search-filter-bar { background: white; padding: 15px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .search-box { flex: 2; min-width: 200px; }
         .filter-box { flex: 1; min-width: 140px; }
-        
-        .search-filter-bar input, .search-filter-bar select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-size: 14px;
-        }
+        .search-filter-bar input, .search-filter-bar select { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
 
-        .container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 20px;
-        }
+        .container { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media (min-width: 1200px) { .container { grid-template-columns: 380px 1fr; } }
 
-        @media (min-width: 1200px) {
-            .container { grid-template-columns: 380px 1fr; }
-        }
-
-        .card {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-
-        .card h2 {
-            font-size: 18px;
-            margin-bottom: 15px;
-            color: var(--primary);
-            border-bottom: 2px solid var(--bg);
-            padding-bottom: 8px;
-        }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .card h2 { font-size: 18px; margin-bottom: 15px; color: var(--primary); border-bottom: 2px solid var(--bg); padding-bottom: 8px; }
 
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px;
-        }
-
+        .form-group input, .form-group select, .form-group textarea { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px; font-size: 14px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
         button { cursor: pointer; padding: 10px 15px; border: none; border-radius: 4px; font-weight: bold; font-size: 14px; transition: background 0.2s; }
@@ -164,104 +87,239 @@
         .badge-type { display: inline-block; padding: 3px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; background: #e2f0fd; color: #005691; margin-bottom: 4px; }
         .checklist-container { margin-top: 8px; background: #f9f9f9; padding: 6px; border-radius: 4px; border: 1px dashed #ccc; }
         .checklist-item { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 12px; }
-        
         .progress-bar-bg { background: #e0e0e0; border-radius: 4px; height: 8px; width: 100%; margin-top: 4px; overflow: hidden; }
         .progress-bar-fill { background: #28a745; height: 100%; width: 0%; transition: width 0.3s; }
-        
         .loading-overlay { display: none; text-align: center; padding: 10px; font-weight: bold; color: var(--primary); }
     </style>
 </head>
 <body>
 
-<header>
-    <div class="title-area">
-        <h1>FAROL - Radiologia Diagnóstica</h1>
-        <p>Painel Sincronizado Tempo Real - 5W2H | ADMINISTRATIVO</p>
-    </div>
-    <div class="filter-area">
-        <label for="month-filter">Visão Mensal:</label>
-        <select id="month-filter" onchange="renderTable()">
-            <option value="ALL">🗓️ Todos os Meses</option>
-            <option value="2026-01">Janeiro / 2026</option>
-            <option value="2026-02">Fevereiro / 2026</option>
-            <option value="2026-03">Março / 2026</option>
-            <option value="2026-04">Abril / 2026</option>
-            <option value="2026-05">Maio / 2026</option>
-            <option value="2026-06">Junho / 2026</option>
-            <option value="2026-07">Julho / 2026</option>
-            <option value="2026-08">Agosto / 2026</option>
-            <option value="2026-09">Setembro / 2026</option>
-            <option value="2026-10">Outubro / 2026</option>
-            <option value="2026-11">Novembro / 2026</option>
-            <option value="2026-12">Dezembro / 2026</option>
-        </select>
-    </div>
-</header>
-
-<div class="dashboard-cards">
-    <div class="db-card" style="border-left: 5px solid var(--primary);">
-        <h3>Filtrados / Total</h3>
-        <div class="value" id="db-total">0</div>
-    </div>
-    <div class="db-card" style="border-left: 5px solid #dc3545;">
-        <h3>🔴 Críticos</h3>
-        <div class="value" id="db-critico" style="color: #dc3545;">0</div>
-    </div>
-    <div class="db-card" style="border-left: 5px solid #ffc107;">
-        <h3>🟡 Em Atenção</h3>
-        <div class="value" id="db-atencao" style="color: #b58100;">0</div>
-    </div>
-    <div class="db-card" style="border-left: 5px solid #28a745;">
-        <h3>🟢 Concluídos</h3>
-        <div class="value" id="db-concluido" style="color: #28a745;">0</div>
-    </div>
-    <div class="db-card" style="border-left: 5px solid #007bff;">
-        <h3>🔵 Planejados</h3>
-        <div class="value" id="db-planejado" style="color: #007bff;">0</div>
-    </div>
+<!-- TELA DE LOGIN -->
+<div id="login-screen" class="auth-container">
+    <div class="logo-placeholder">HOSPITAL VERA CRUZ</div>
+    <h2>Acesso ao Farol</h2>
+    <p>Medicina Diagnóstica</p>
+    <form id="login-form">
+        <div class="form-group" style="text-align: left;">
+            <label>Login (Nome.Sobrenome)</label>
+            <input type="text" id="login-username" required placeholder="Ex: aline.xavier" pattern="^[a-zA-Z]+\.[a-zA-Z]+$" title="Utilize o formato Nome.Sobrenome">
+        </div>
+        <div class="form-group" style="text-align: left;">
+            <label>Senha</label>
+            <input type="password" id="login-password" required placeholder="Sua senha">
+        </div>
+        <button type="submit" class="btn-primary">Entrar</button>
+        <button type="button" class="btn-secondary" onclick="switchAuthScreen('register')">Solicitar Novo Acesso</button>
+    </form>
 </div>
 
-<div class="container">
-    <div class="card">
-        <h2 id="form-title">Cadastrar Nova Entrega</h2>
-        <div id="loading-msg" class="loading-overlay">Sincronizando com a Nuvem...</div>
-        <form id="project-form">
-            <input type="hidden" id="project-id">
-            
-            <div class="form-row">
+<!-- TELA DE CADASTRO -->
+<div id="register-screen" class="auth-container" style="display: none;">
+    <div class="logo-placeholder">HOSPITAL VERA CRUZ</div>
+    <h2>Solicitar Acesso</h2>
+    <p>Preencha os dados abaixo. O administrador liberará seu acesso diretamente pelo sistema.</p>
+    <form id="register-form">
+        <div class="form-group" style="text-align: left;">
+            <label>Login Desejado (Nome.Sobrenome)*</label>
+            <input type="text" id="reg-username" required placeholder="Ex: joao.silva" pattern="^[a-zA-Z]+\.[a-zA-Z]+$" title="Deve ser no formato Nome.Sobrenome">
+        </div>
+        <div class="form-group" style="text-align: left;">
+            <label>Defina uma Senha*</label>
+            <input type="password" id="reg-password" required placeholder="Crie uma senha segura">
+        </div>
+        <button type="submit" class="btn-primary">Enviar Solicitação</button>
+        <button type="button" class="btn-secondary" onclick="switchAuthScreen('login')">Voltar ao Login</button>
+    </form>
+</div>
+
+<!-- APLICATIVO PRINCIPAL -->
+<div id="main-app">
+    <header>
+        <div class="title-area">
+            <h1>FAROL — Medicina Diagnóstica</h1>
+            <p>Painel Cloud Sincronizado | ADMINISTRATIVO</p>
+        </div>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <div class="user-badge">
+                👤 <span id="current-user-display">Usuário</span>
+                <button class="btn-logout" onclick="logout()">Sair</button>
+            </div>
+            <div class="filter-area">
+                <label for="month-filter">Visão Mensal:</label>
+                <select id="month-filter" onchange="renderTable()">
+                    <option value="ALL">🗓️ Todos os Meses</option>
+                    <option value="2026-01">Janeiro / 2026</option>
+                    <option value="2026-02">Fevereiro / 2026</option>
+                    <option value="2026-03">Março / 2026</option>
+                    <option value="2026-04">Abril / 2026</option>
+                    <option value="2026-05">Maio / 2026</option>
+                    <option value="2026-06">Junho / 2026</option>
+                    <option value="2026-07">Julho / 2026</option>
+                    <option value="2026-08">Agosto / 2026</option>
+                    <option value="2026-09">Setembro / 2026</option>
+                    <option value="2026-10">Outubro / 2026</option>
+                    <option value="2026-11">Novembro / 2026</option>
+                    <option value="2026-12">Dezembro / 2026</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- ÁREA EXCLUSIVA DE GERENCIAMENTO DE ACESSOS -->
+    <div id="admin-area">
+        <h3>🔑 Painel de Controle — Solicitações de Acesso Pendentes</h3>
+        <table class="user-list">
+            <thead>
+                <tr>
+                    <th>Usuário (Login)</th>
+                    <th>Data de Solicitação</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody id="admin-user-table-body">
+                <tr><td colspan="3">Nenhum usuário pendente.</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="dashboard-cards">
+        <div class="db-card" style="border-left: 5px solid var(--primary);">
+            <h3>Filtrados / Total</h3>
+            <div class="value" id="db-total">0</div>
+        </div>
+        <div class="db-card" style="border-left: 5px solid #dc3545;">
+            <h3>🔴 Críticos</h3>
+            <div class="value" id="db-critico" style="color: #dc3545;">0</div>
+        </div>
+        <div class="db-card" style="border-left: 5px solid #ffc107;">
+            <h3>🟡 Em Atenção</h3>
+            <div class="value" id="db-atencao" style="color: #b58100;">0</div>
+        </div>
+        <div class="db-card" style="border-left: 5px solid #28a745;">
+            <h3>🟢 Concluídos</h3>
+            <div class="value" id="db-concluido" style="color: #28a745;">0</div>
+        </div>
+        <div class="db-card" style="border-left: 5px solid #007bff;">
+            <h3>🔵 Planejados</h3>
+            <div class="value" id="db-planejado" style="color: #007bff;">0</div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h2 id="form-title">Cadastrar Nova Entrega</h2>
+            <div id="loading-msg" class="loading-overlay">Sincronizando com a Nuvem...</div>
+            <form id="project-form">
+                <input type="hidden" id="project-id">
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="form-type">Tipo de Classificação*</label>
+                        <select id="form-type" required>
+                            <option value="Demanda">📋 Demanda</option>
+                            <option value="Projeto">🚀 Projeto</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-what">What (O que será feito?)*</label>
+                        <input type="text" id="form-what" required placeholder="Ex: Saneamento Banco de Dados">
+                    </div>
+                </div>
+
                 <div class="form-group">
-                    <label for="form-type">Tipo de Classificação*</label>
-                    <select id="form-type" required>
-                        <option value="Demanda">📋 Demanda</option>
-                        <option value="Projeto">🚀 Projeto</option>
+                    <label for="form-why">Why (Por que será feito?)</label>
+                    <textarea id="form-why" rows="2" placeholder="Justificativa assistencial/operacional"></textarea>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="form-start-date">Data de Início*</label>
+                        <input type="date" id="form-start-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-when">When (Prazo Final)*</label>
+                        <input type="date" id="form-when" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="form-where">Where (Onde/Setor)*</label>
+                        <select id="form-where" required>
+                            <option value="Administrativo">Administrativo</option>
+                            <option value="Médico Radiologista">Médico Radiologista</option>
+                            <option value="Enfermagem">Enfermagem</option>
+                            <option value="Técnicos">Técnicos</option>
+                            <option value="Densitometria">Densitometria</option>
+                            <option value="Mamografia">Mamografia</option>
+                            <option value="Raio-X">Raio-X</option>
+                            <option value="Ressonância">Ressonância</option>
+                            <option value="Tomografia">Tomografia</option>
+                            <option value="Ultrassom">Ultrassom</option>
+                            <option value="Anestesia">Anestesia</option>
+                            <option value="Call Center">Call Center</option>
+                            <option value="Recepção">Recepção</option>
+                            <option value="Central de Laudos">Central de Laudos</option>
+                            <option value="Intervencão">Intervenção</option>
+                            <option value="Comercial">Comercial</option>
+                            <option value="Qualidade">Qualidade</option>
+                            <option value="Faturamento">Faturamento</option>
+                            <option value="Controladoria">Controladoria</option>
+                            <option value="Sistemas/Regras">Sistemas/Regras</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-who">Who (Responsável)*</label>
+                        <input type="text" id="form-who" required placeholder="Nome do Idealizador">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="form-status">Status Inicial*</label>
+                        <select id="form-status" required>
+                            <option value="Planejado">🔵 Planejado</option>
+                            <option value="Em Andamento">🟡 Em Andamento</option>
+                            <option value="Concluído">🟢 Concluído</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="form-howmuch">How Much (Custo/Esforço)</label>
+                        <input type="text" id="form-howmuch" placeholder="Ex: R$ 5.000 ou Esforço Alto">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="form-how-checklist">How (Mapeamento do Checklist - Separe por vírgula)*</label>
+                    <textarea id="form-how-checklist" rows="3" required placeholder="Mapear duplicidades, Homologar TUSS"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="form-involved">Envolvidos / Stakeholders</label>
+                    <input type="text" id="form-involved" placeholder="Ex: TI, Faturamento">
+                </div>
+
+                <button type="submit" class="btn-primary" id="btn-submit">Salvar Registro</button>
+                <button type="button" class="btn-secondary" id="btn-cancel" style="display:none;" onclick="resetForm()">Cancelar Edição</button>
+            </form>
+        </div>
+
+        <div>
+            <div class="search-filter-bar">
+                <div class="search-box">
+                    <input type="text" id="search-input" onkeyup="renderTable()" placeholder="🔍 Pesquisar por O que, Por que ou Responsável...">
+                </div>
+                <div class="filter-box">
+                    <select id="type-filter" onchange="renderTable()">
+                        <option value="ALL">📦 Todas Classificações</option>
+                        <option value="Demanda">📋 Demandas</option>
+                        <option value="Projeto">🚀 Projetos</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="form-what">What (O que será feito?)*</label>
-                    <input type="text" id="form-what" required placeholder="Ex: Saneamento Banco de Dados">
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="form-why">Why (Por que será feito?)</label>
-                <textarea id="form-why" rows="2" placeholder="Justificativa assistencial/operacional"></textarea>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="form-start-date">Data de Início*</label>
-                    <input type="date" id="form-start-date" required>
-                </div>
-                <div class="form-group">
-                    <label for="form-when">When (Prazo Final)*</label>
-                    <input type="date" id="form-when" required>
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="form-where">Where (Onde/Setor)*</label>
-                    <select id="form-where" required>
+                <div class="filter-box">
+                    <select id="where-filter" onchange="renderTable()">
+                        <option value="ALL">📍 Todos os Setores</option>
                         <option value="Administrativo">Administrativo</option>
                         <option value="Médico Radiologista">Médico Radiologista</option>
                         <option value="Enfermagem">Enfermagem</option>
@@ -285,121 +343,161 @@
                         <option value="Outros">Outros</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="form-who">Who (Responsável)*</label>
-                    <input type="text" id="form-who" required placeholder="Nome do Idealizador">
-                </div>
-            </div>
-
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="form-status">Status Inicial*</label>
-                    <select id="form-status" required>
-                        <option value="Planejado">🔵 Planejado</option>
-                        <option value="Em Andamento">🟡 Em Andamento</option>
-                        <option value="Concluído">🟢 Concluído</option>
+                <div class="filter-box">
+                    <select id="farol-filter" onchange="renderTable()">
+                        <option value="ALL">🚥 Todos os Faróis</option>
+                        <option value="concluido">🟢 Concluídos</option>
+                        <option value="atencao">🟡 Em Atenção</option>
+                        <option value="critico">🔴 Críticos</option>
+                        <option value="planejado">🔵 Planejados</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label for="form-howmuch">How Much (Custo/Esforço)</label>
-                    <input type="text" id="form-howmuch" placeholder="Ex: R$ 5.000 ou Esforço Alto">
-                </div>
             </div>
 
-            <div class="form-group">
-                <label for="form-how-checklist">How (Mapeamento do Checklist - Separe por vírgula)*</label>
-                <textarea id="form-how-checklist" rows="3" required placeholder="Ex: Mapear códigos duplicados, Validar com faturamento, Homologar TUSS"></textarea>
+            <div class="card table-responsive">
+                <h2>Matriz Ativa de Monitoramento (Nuvem Sincronizada)</h2>
+                <table id="project-table">
+                    <thead>
+                        <tr>
+                            <th>Farol</th>
+                            <th>What / Why</th>
+                            <th>Prazos e Tempos</th>
+                            <th>Responsável / Setor</th>
+                            <th>How (Checklist Dinâmico)</th>
+                            <th>How Much / Envolvidos</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body"></tbody>
+                </table>
             </div>
-
-            <div class="form-group">
-                <label for="form-involved">Envolvidos / Stakeholders</label>
-                <input type="text" id="form-involved" placeholder="Ex: TI, Enfermagem, Faturamento">
-            </div>
-
-            <button type="submit" class="btn-primary" id="btn-submit">Salvar Registro</button>
-            <button type="button" class="btn-secondary" id="btn-cancel" style="display:none;" onclick="resetForm()">Cancelar Edição</button>
-        </form>
-    </div>
-
-    <div>
-        <div class="search-filter-bar">
-            <div class="search-box">
-                <input type="text" id="search-input" onkeyup="renderTable()" placeholder="🔍 Pesquisar por O que, Por que ou Responsável...">
-            </div>
-            <div class="filter-box">
-                <select id="type-filter" onchange="renderTable()">
-                    <option value="ALL">📦 Todas Classificações</option>
-                    <option value="Demanda">📋 Demandas</option>
-                    <option value="Projeto">🚀 Projetos</option>
-                </select>
-            </div>
-            <div class="filter-box">
-                <select id="where-filter" onchange="renderTable()">
-                    <option value="ALL">📍 Todos os Setores</option>
-                    <!-- Mesmas opções do formulário -->
-                    <option value="Administrativo">Administrativo</option>
-                    <option value="Médico Radiologista">Médico Radiologista</option>
-                    <option value="Enfermagem">Enfermagem</option>
-                    <option value="Técnicos">Técnicos</option>
-                    <option value="Densitometria">Densitometria</option>
-                    <option value="Mamografia">Mamografia</option>
-                    <option value="Raio-X">Raio-X</option>
-                    <option value="Ressonância">Ressonância</option>
-                    <option value="Tomografia">Tomografia</option>
-                    <option value="Ultrassom">Ultrassom</option>
-                    <option value="Anestesia">Anestesia</option>
-                    <option value="Call Center">Call Center</option>
-                    <option value="Recepção">Recepção</option>
-                    <option value="Central de Laudos">Central de Laudos</option>
-                    <option value="Intervencão">Intervenção</option>
-                    <option value="Comercial">Comercial</option>
-                    <option value="Qualidade">Qualidade</option>
-                    <option value="Faturamento">Faturamento</option>
-                    <option value="Controladoria">Controladoria</option>
-                    <option value="Sistemas/Regras">Sistemas/Regras</option>
-                    <option value="Outros">Outros</option>
-                </select>
-            </div>
-            <div class="filter-box">
-                <select id="farol-filter" onchange="renderTable()">
-                    <option value="ALL">🚥 Todos os Faróis</option>
-                    <option value="concluido">🟢 Concluídos</option>
-                    <option value="atencao">🟡 Em Atenção</option>
-                    <option value="critico">🔴 Críticos</option>
-                    <option value="planejado">🔵 Planejados</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="card table-responsive">
-            <h2>Matriz Ativa de Monitoramento (Nuvem Sincronizada)</h2>
-            <table id="project-table">
-                <thead>
-                    <tr>
-                        <th>Farol</th>
-                        <th>What / Why</th>
-                        <th>Prazos e Tempos</th>
-                        <th>Responsável / Setor</th>
-                        <th>How (Checklist Dinâmico & Progresso)</th>
-                        <th>How Much / Envolvidos</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="table-body"></tbody>
-            </table>
         </div>
     </div>
 </div>
 
 <script>
-    // Configurações do Supabase - INSIRA SEUS DADOS AQUI!
+    // CONFIGURAÇÕES DO SUPABASE — COLOQUE SEUS DADOS AQUI!
     const SUPABASE_URL = "https://kyylikreczszuzumrqrl.supabase.co/rest/v1/";
     const SUPABASE_KEY = "sb_publishable_fcY6S9xKkIeqPpKWP5Y7Bg_xUdTT63d";
 
     const supabase = createClient.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let projects = [];
+    let currentUser = null;
 
+    function switchAuthScreen(screen) {
+        document.getElementById('login-screen').style.display = screen === 'login' ? 'block' : 'none';
+        document.getElementById('register-screen').style.display = screen === 'register' ? 'block' : 'none';
+    }
+
+    // Fluxo de Cadastro Direto
+    document.getElementById('register-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const usernameInput = document.getElementById('reg-username').value.trim();
+        const passwordInput = document.getElementById('reg-password').value;
+
+        if(!usernameInput.includes('.')) {
+            alert("O login precisa ser no formato Nome.Sobrenome (ex: lucas.silva)");
+            return;
+        }
+
+        const { data, error } = await supabase
+            .from('usuarios_farol')
+            .insert([{ login: usernameInput, senha: passwordInput, aprovado: false, is_admin: false }]);
+
+        if (error) {
+            alert("Este nome de usuário já foi solicitado ou já existe.");
+            return;
+        }
+
+        alert("Solicitação cadastrada! Solicite à Administradora (Aline) para ativar seu acesso no painel.");
+        switchAuthScreen('login');
+        document.getElementById('register-form').reset();
+    });
+
+    // Fluxo de Login
+    document.getElementById('login-form').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        const usernameInput = document.getElementById('login-username').value.trim();
+        const passwordInput = document.getElementById('login-password').value;
+
+        const { data, error } = await supabase
+            .from('usuarios_farol')
+            .select('*')
+            .eq('login', usernameInput)
+            .eq('senha', passwordInput)
+            .single();
+
+        if (error || !data) {
+            alert("Usuário ou senha incorretos.");
+            return;
+        }
+
+        if (!data.aprovado) {
+            alert("Seu acesso ainda está pendente de liberação pela Administradora.");
+            return;
+        }
+
+        currentUser = data;
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        document.getElementById('current-user-display').innerText = currentUser.login;
+
+        if (currentUser.is_admin) {
+            document.getElementById('admin-area').style.display = 'block';
+            loadPendingUsers();
+        }
+
+        loadProjectsFromCloud();
+    });
+
+    function logout() {
+        currentUser = null;
+        document.getElementById('main-app').style.display = 'none';
+        document.getElementById('admin-area').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'block';
+        document.getElementById('login-form').reset();
+    }
+
+    // Carregar usuários pendentes para o Admin
+    async function loadPendingUsers() {
+        const { data, error } = await supabase
+            .from('usuarios_farol')
+            .select('*')
+            .eq('aprovado', false);
+
+        const tbody = document.getElementById('admin-user-table-body');
+        tbody.innerHTML = "";
+
+        if (error || !data || data.length === 0) {
+            tbody.innerHTML = "<tr><td colspan='3'>Nenhum usuário aguardando aprovação.</td></tr>";
+            return;
+        }
+
+        data.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${user.login}</strong></td>
+                <td>${new Date(user.created_at).toLocaleDateString('pt-BR')}</td>
+                <td><button class="btn-approve" onclick="approveUser('${user.id}')">🟢 Liberar Acesso</button></td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    window.approveUser = async function(userId) {
+        const { error } = await supabase
+            .from('usuarios_farol')
+            .update({ aprovado: true })
+            .eq('id', userId);
+
+        if (!error) {
+            alert("Acesso liberado com sucesso!");
+            loadPendingUsers();
+        }
+    }
+
+    // --- OPERAÇÃO DO FAROL DE ENTREGAS ---
     const form = document.getElementById('project-form');
     const tableBody = document.getElementById('table-body');
     const monthFilter = document.getElementById('month-filter');
@@ -420,8 +518,7 @@
         if (!startStr || !endStr) return 0;
         const start = new Date(startStr); start.setHours(0,0,0,0);
         const end = new Date(endStr); end.setHours(0,0,0,0);
-        const diffTime = end.getTime() - start.getTime();
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
     }
 
     function calculateFarol(project, progress) {
@@ -435,40 +532,15 @@
         return { emoji: "🔵", label: "planejado" };
     }
 
-    function updateDashboard(counters) {
-        document.getElementById('db-total').innerText = counters.total;
-        document.getElementById('db-critico').innerText = counters.critico;
-        document.getElementById('db-atencao').innerText = counters.atencao;
-        document.getElementById('db-concluido').innerText = counters.concluido;
-        document.getElementById('db-planejado').innerText = counters.planejado;
-    }
-
-    // Carrega dados da Nuvem
     async function loadProjectsFromCloud() {
         loadingMsg.style.display = "block";
-        const { data, error } = await supabase
-            .from('projects_hvc')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error("Erro ao carregar dados:", error);
-            alert("Erro ao conectar com o banco de dados.");
-        } else {
-            projects = data || [];
-            renderTable();
-        }
+        const { data, error } = await supabase.from('projects_hvc').select('*').order('created_at', { ascending: false });
+        if (!error) { projects = data || []; renderTable(); }
         loadingMsg.style.display = "none";
     }
 
     function renderTable() {
         tableBody.innerHTML = "";
-        const selectedMonth = monthFilter.value;
-        const searchText = searchInput.value.toLowerCase().trim();
-        const selectedType = typeFilter.value;
-        const selectedWhere = whereFilter.value;
-        const selectedFarol = farolFilter.value;
-        
         let dbCounters = { total: 0, critico: 0, atencao: 0, concluido: 0, planejado: 0 };
 
         projects.forEach(p => {
@@ -477,65 +549,40 @@
             const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
             const farolInfo = calculateFarol(p, progressPercent);
 
-            const projectMonth = p.start_date.substring(0, 7);
-            if (selectedMonth !== "ALL" && projectMonth !== selectedMonth) return;
-            if (selectedType !== "ALL" && p.type !== selectedType) return;
-            if (selectedWhere !== "ALL" && p.where !== selectedWhere) return;
-            if (selectedFarol !== "ALL" && farolInfo.label !== selectedFarol) return;
+            if (monthFilter.value !== "ALL" && p.start_date.substring(0, 7) !== monthFilter.value) return;
+            if (typeFilter.value !== "ALL" && p.type !== typeFilter.value) return;
+            if (whereFilter.value !== "ALL" && p.where !== whereFilter.value) return;
+            if (farolFilter.value !== "ALL" && farolInfo.label !== farolFilter.value) return;
 
-            if (searchText !== "") {
-                const matchWhat = p.what.toLowerCase().includes(searchText);
-                const matchWhy = (p.why || "").toLowerCase().includes(searchText);
-                const matchWho = p.who.toLowerCase().includes(searchText);
-                if (!matchWhat && !matchWhy && !matchWho) return;
+            if (searchInput.value.trim() !== "") {
+                const s = searchInput.value.toLowerCase();
+                if (!p.what.toLowerCase().includes(s) && !(p.why || "").toLowerCase().includes(s) && !p.who.toLowerCase().includes(s)) return;
             }
 
             dbCounters.total++;
             dbCounters[farolInfo.label]++;
 
-            const totalProjectDays = calculateDaysBetween(p.start_date, p.when);
-            let timeDisplayHTML = `
-                <small>Início: ${p.start_date.split('-').reverse().join('/')}</small><br>
-                <small>Prazo: ${p.when.split('-').reverse().join('/')}</small><br>
-                <strong>Tempo do Projeto: ${totalProjectDays} dias</strong>
-            `;
-
+            let timeDisplayHTML = `<small>Início: ${p.start_date.split('-').reverse().join('/')}</small><br><small>Prazo: ${p.when.split('-').reverse().join('/')}</small><br><strong>Tempo: ${calculateDaysBetween(p.start_date, p.when)} dias</strong>`;
             if (p.status === "Concluído" && p.end_date) {
-                const actualLeadTime = calculateDaysBetween(p.start_date, p.end_date);
-                timeDisplayHTML += `<br><span style="color: #28a745; font-weight: bold;">
-                    ✓ Concluído em: ${p.end_date.split('-').reverse().join('/')}<br>
-                    Tempo de Execução: ${actualLeadTime} dias
-                </span>`;
+                timeDisplayHTML += `<br><span style="color: #28a745; font-weight: bold;">✓ ${p.end_date.split('-').reverse().join('/')}<br>Execução: ${calculateDaysBetween(p.start_date, p.end_date)} dias</span>`;
             }
 
-            const row = document.createElement('tr');
             let checklistHTML = `<div class="checklist-container">`;
             if(p.checklist) {
                 p.checklist.forEach((item, index) => {
-                    checklistHTML += `
-                        <div class="checklist-item">
-                            <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTask('${p.id}', ${index})">
-                            <span style="${item.done ? 'text-decoration: line-through; color: #888;' : ''}">${item.task}</span>
-                        </div>
-                    `;
+                    checklistHTML += `<div class="checklist-item"><input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTask('${p.id}', ${index})"><span style="${item.done ? 'text-decoration: line-through; color: #888;' : ''}">${item.task}</span></div>`;
                 });
             }
             checklistHTML += `</div>`;
 
+            const row = document.createElement('tr');
             row.innerHTML = `
                 <td class="farol-cell">${farolInfo.emoji}</td>
-                <td>
-                    <span class="badge-type">${p.type === 'Projeto' ? '🚀 Projeto' : '📋 Demanda'}</span><br>
-                    <strong>${p.what}</strong><br><small style="color:#666">${p.why || ''}</small>
-                </td>
+                <td><span class="badge-type">${p.type === 'Projeto' ? '🚀 Projeto' : '📋 Demanda'}</span><br><strong>${p.what}</strong><br><small style="color:#666">${p.why || ''}</small></td>
                 <td>${timeDisplayHTML}</td>
                 <td><strong>${p.who}</strong><br><span class="badge-status">${p.where}</span></td>
-                <td>
-                    <strong>Progresso: ${progressPercent}%</strong>
-                    <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${progressPercent}%"></div></div>
-                    ${checklistHTML}
-                </td>
-                <td><small>Recursos: ${p.howmuch || 'N/A'}</small><br><small style="color: #444;">Envolvidos: ${p.involved || 'N/A'}</small></td>
+                <td><strong>Progresso: ${progressPercent}%</strong><div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${progressPercent}%"></div></div>${checklistHTML}</td>
+                <td><small>Custo: ${p.howmuch || 'N/A'}</small><br><small style="color: #444;">Envolvidos: ${p.involved || 'N/A'}</small></td>
                 <td class="actions-btn">
                     <button class="btn-action btn-edit" onclick="editProject('${p.id}')">Editar</button>
                     <button class="btn-action btn-delete" onclick="deleteProject('${p.id}')">Excluir</button>
@@ -544,7 +591,11 @@
             tableBody.appendChild(row);
         });
 
-        updateDashboard(dbCounters);
+        document.getElementById('db-total').innerText = dbCounters.total;
+        document.getElementById('db-critico').innerText = dbCounters.critico;
+        document.getElementById('db-atencao').innerText = dbCounters.atencao;
+        document.getElementById('db-concluido').innerText = dbCounters.concluido;
+        document.getElementById('db-planejado').innerText = dbCounters.planejado;
     }
 
     window.toggleTask = async function(projectId, taskIndex) {
@@ -552,22 +603,10 @@
         if (project) {
             project.checklist[taskIndex].done = !project.checklist[taskIndex].done;
             const allDone = project.checklist.every(t => t.done);
-            
-            if (allDone) {
-                project.status = "Concluído";
-                if (!project.end_date) project.end_date = getLocalDateString();
-            } else {
-                project.status = "Em Andamento";
-                project.end_date = "";
-            }
+            project.status = allDone ? "Concluído" : "Em Andamento";
+            project.end_date = allDone ? (project.end_date || getLocalDateString()) : "";
 
-            loadingMsg.style.display = "block";
-            await supabase.from('projects_hvc').update({ 
-                checklist: project.checklist, 
-                status: project.status, 
-                end_date: project.end_date 
-            }).eq('id', projectId);
-            
+            await supabase.from('projects_hvc').update({ checklist: project.checklist, status: project.status, end_date: project.end_date }).eq('id', projectId);
             loadProjectsFromCloud();
         }
     }
@@ -575,55 +614,42 @@
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
         const id = document.getElementById('project-id').value;
-        const rawChecklistText = document.getElementById('form-how-checklist').value;
-        const startDateValue = document.getElementById('form-start-date').value;
-        const statusValue = document.getElementById('form-status').value;
+        const rawText = document.getElementById('form-how-checklist').value;
+        const statusVal = document.getElementById('form-status').value;
         
         let checklistArray = [];
         let savedEndDate = "";
 
         if (id) {
-            const existingProject = projects.find(p => p.id === id);
-            savedEndDate = existingProject.end_date || "";
-            checklistArray = rawChecklistText.split(',').map((t, idx) => {
-                const cleanTask = t.trim();
-                const oldTask = existingProject.checklist[idx];
-                return { task: cleanTask, done: oldTask ? oldTask.done : false };
-            }).filter(t => t.task !== "");
+            const old = projects.find(p => p.id === id);
+            savedEndDate = old.end_date || "";
+            checklistArray = rawText.split(',').map((t, idx) => ({ task: t.trim(), done: old.checklist[idx] ? old.checklist[idx].done : false })).filter(t => t.task !== "");
         } else {
-            checklistArray = rawChecklistText.split(',').map(t => ({ task: t.trim(), done: false })).filter(t => t.task !== "");
+            checklistArray = rawText.split(',').map(t => ({ task: t.trim(), done: false })).filter(t => t.task !== "");
         }
 
-        if (statusValue === "Concluído") {
-            if (!savedEndDate) savedEndDate = getLocalDateString();
-        } else {
-            savedEndDate = "";
-        }
+        savedEndDate = statusVal === "Concluído" ? (savedEndDate || getLocalDateString()) : "";
 
         const projectData = {
             id: id || Date.now().toString(),
             type: document.getElementById('form-type').value,
             what: document.getElementById('form-what').value,
             why: document.getElementById('form-why').value,
-            start_date: startDateValue,
+            start_date: document.getElementById('form-start-date').value,
             when: document.getElementById('form-when').value,
             end_date: savedEndDate,
             where: document.getElementById('form-where').value,
             who: document.getElementById('form-who').value,
-            status: statusValue,
+            status: statusVal,
             howmuch: document.getElementById('form-howmuch').value,
             involved: document.getElementById('form-involved').value,
             checklist: checklistArray
         };
 
         loadingMsg.style.display = "block";
-        if (id) {
-            await supabase.from('projects_hvc').update(projectData).eq('id', id);
-        } else {
-            await supabase.from('projects_hvc').insert([projectData]);
-        }
+        if (id) { await supabase.from('projects_hvc').update(projectData).eq('id', id); } 
+        else { await supabase.from('projects_hvc').insert([projectData]); }
 
-        monthFilter.value = startDateValue.substring(0, 7);
         resetForm();
         loadProjectsFromCloud();
     });
@@ -631,7 +657,6 @@
     window.editProject = function(id) {
         const p = projects.find(p => p.id === id);
         if (!p) return;
-
         document.getElementById('project-id').value = p.id;
         document.getElementById('form-type').value = p.type;
         document.getElementById('form-what').value = p.what;
@@ -644,15 +669,13 @@
         document.getElementById('form-howmuch').value = p.howmuch || "";
         document.getElementById('form-involved').value = p.involved || "";
         document.getElementById('form-how-checklist').value = p.checklist.map(t => t.task).join(', ');
-
         document.getElementById('form-title').innerText = "Editar Registro";
         document.getElementById('btn-submit').innerText = "Atualizar Registro";
         document.getElementById('btn-cancel').style.display = "block";
     }
 
     window.deleteProject = async function(id) {
-        if(confirm("Deseja remover este registro definitivamente da Nuvem?")) {
-            loadingMsg.style.display = "block";
+        if(confirm("Deseja remover este registro?")) {
             await supabase.from('projects_hvc').delete().eq('id', id);
             loadProjectsFromCloud();
             resetForm();
@@ -666,9 +689,6 @@
         document.getElementById('btn-submit').innerText = "Salvar Registro";
         document.getElementById('btn-cancel').style.display = "none";
     }
-
-    // Inicialização automática puxando os dados da nuvem
-    loadProjectsFromCloud();
 </script>
 </body>
 </html>

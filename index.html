@@ -175,12 +175,12 @@
 
 <header>
     <div class="title-area">
-        <h1>FAROL - Medicina Diagnóstica</h1>
-        <p>Painel Sincronizado em Tempo Real | ADMINISTRATIVO IMAGEM</p>
+        <h1>FAROL — Medicina Diagnóstica</h1>
+        <p>Painel Cloud Sincronizado em Tempo Real | ADMINISTRATIVO</p>
     </div>
     <div class="filter-area">
         <label for="month-filter">Visão Mensal:</label>
-        <select id="month-filter" onchange="renderTable()">
+        <select id="month-filter" onchange="window.renderTable()">
             <option value="ALL">🗓️ Todos os Meses</option>
             <option value="2026-01">Janeiro / 2026</option>
             <option value="2026-02">Fevereiro / 2026</option>
@@ -317,24 +317,24 @@
             </div>
 
             <button type="submit" class="btn-primary" id="btn-submit">Salvar Registro</button>
-            <button type="button" class="btn-secondary" id="btn-cancel" style="display:none;" onclick="resetForm()">Cancelar Edição</button>
+            <button type="button" class="btn-secondary" id="btn-cancel" style="display:none;" onclick="window.resetForm()">Cancelar Edição</button>
         </form>
     </div>
 
     <div>
         <div class="search-filter-bar">
             <div class="search-box">
-                <input type="text" id="search-input" onkeyup="renderTable()" placeholder="🔍 Pesquisar por O que, Por que ou Responsável...">
+                <input type="text" id="search-input" onkeyup="window.renderTable()" placeholder="🔍 Pesquisar por O que, Por que ou Responsável...">
             </div>
             <div class="filter-box">
-                <select id="type-filter" onchange="renderTable()">
+                <select id="type-filter" onchange="window.renderTable()">
                     <option value="ALL">📦 Todas Classificações</option>
                     <option value="Demanda">📋 Demandas</option>
                     <option value="Projeto">🚀 Projetos</option>
                 </select>
             </div>
             <div class="filter-box">
-                <select id="where-filter" onchange="renderTable()">
+                <select id="where-filter" onchange="window.renderTable()">
                     <option value="ALL">📍 Todos os Setores</option>
                     <!-- Mesmas opções do formulário -->
                     <option value="Administrativo">Administrativo</option>
@@ -361,7 +361,7 @@
                 </select>
             </div>
             <div class="filter-box">
-                <select id="farol-filter" onchange="renderTable()">
+                <select id="farol-filter" onchange="window.renderTable()">
                     <option value="ALL">🚥 Todos os Faróis</option>
                     <option value="concluido">🟢 Concluídos</option>
                     <option value="atencao">🟡 Em Atenção</option>
@@ -372,7 +372,7 @@
         </div>
 
         <div class="card table-responsive">
-            <h2>Matriz Ativa de Monitoramento</h2>
+            <h2>Matriz Ativa de Monitoramento (Nuvem Sincronizada)</h2>
             <table id="project-table">
                 <thead>
                     <tr>
@@ -392,40 +392,42 @@
 </div>
 
 <script>
-    // Configurações do Supabase - INSIRA SEUS DADOS AQUI!
+    // ========================================
+    // ETAPA 1-3: CONFIGURAÇÃO E INICIALIZAÇÃO
+    // ========================================
+    
     const SUPABASE_URL = "https://kyylikreczszuzumrqrl.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5eWxpa3JlY3pzenV6dW1ycXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MzU3MzE5OTksImV4cCI6MTk1MTMwNzk5OX0.sb_publishable_fcY6S9xKkIeqPpKWP5Y7Bg_xUdTT63d";
+    const SUPABASE_KEY = "sb_publishable_fcY6S9xKkIeqPpKWP5Y7Bg_xUdTT63d";
+    const { createClient } = window.supabase;
+    const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let supabase = null;
-    try {
-        if (!window.supabase) {
-            throw new Error('Biblioteca Supabase não carregada. Verifique a importação do CDN.');
-        }
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log('✓ Supabase inicializado com sucesso');
-    } catch (err) {
-        console.error('✗ Erro ao inicializar Supabase:', err);
-        alert('Erro crítico ao conectar com Supabase. Detalhes: ' + err.message);
-        supabase = null;
-    }
-
+    // ========================================
+    // VARIÁVEIS GLOBAIS
+    // ========================================
+    
     let projects = [];
 
-    const form = document.getElementById('project-form');
-    const tableBody = document.getElementById('table-body');
-    const monthFilter = document.getElementById('month-filter');
-    const searchInput = document.getElementById('search-input');
-    const typeFilter = document.getElementById('type-filter');
-    const whereFilter = document.getElementById('where-filter');
-    const farolFilter = document.getElementById('farol-filter');
-    const loadingMsg = document.getElementById('loading-msg');
+    // ========================================
+    // CACHE DOS ELEMENTOS DOM
+    // ========================================
     
-    // Validar que os elementos estão presentes
-    if (!form || !tableBody) {
-        console.error('Elementos essenciais do DOM não encontrados');
-        alert('Erro: Página não carregada corretamente');
+    let form, tableBody, monthFilter, searchInput, typeFilter, whereFilter, farolFilter, loadingMsg;
+
+    function cacheElements() {
+        form = document.getElementById('project-form');
+        tableBody = document.getElementById('table-body');
+        monthFilter = document.getElementById('month-filter');
+        searchInput = document.getElementById('search-input');
+        typeFilter = document.getElementById('type-filter');
+        whereFilter = document.getElementById('where-filter');
+        farolFilter = document.getElementById('farol-filter');
+        loadingMsg = document.getElementById('loading-msg');
     }
 
+    // ========================================
+    // UTILIDADES
+    // ========================================
+    
     function getLocalDateString() {
         const d = new Date();
         const offset = d.getTimezoneOffset();
@@ -435,23 +437,39 @@
 
     function calculateDaysBetween(startStr, endStr) {
         if (!startStr || !endStr) return 0;
-        const start = new Date(startStr); start.setHours(0,0,0,0);
-        const end = new Date(endStr); end.setHours(0,0,0,0);
+        const start = new Date(startStr);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(endStr);
+        end.setHours(0, 0, 0, 0);
         const diffTime = end.getTime() - start.getTime();
         return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     }
 
     function calculateFarol(project, progress) {
-        if (project.status === "Concluído" || progress === 100) return { emoji: "🟢", label: "concluido" };
-        const today = new Date(); today.setHours(0,0,0,0);
-        const deadline = new Date(project.when); deadline.setHours(0,0,0,0);
-        if (today > deadline) return { emoji: "🔴", label: "critico" };
+        if (project.status === "Concluído" || progress === 100) {
+            return { emoji: "🟢", label: "concluido" };
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const deadline = new Date(project.when);
+        deadline.setHours(0, 0, 0, 0);
+        if (today > deadline) {
+            return { emoji: "🔴", label: "critico" };
+        }
         const daysDiff = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 3600 * 24));
-        if (daysDiff <= 7 && progress < 80) return { emoji: "🟡", label: "atencao" };
-        if (project.status === "Em Andamento") return { emoji: "🟡", label: "atencao" };
+        if (daysDiff <= 7 && progress < 80) {
+            return { emoji: "🟡", label: "atencao" };
+        }
+        if (project.status === "Em Andamento") {
+            return { emoji: "🟡", label: "atencao" };
+        }
         return { emoji: "🔵", label: "planejado" };
     }
 
+    // ========================================
+    // INTERFACE - DASHBOARD E RENDERIZAÇÃO
+    // ========================================
+    
     function updateDashboard(counters) {
         document.getElementById('db-total').innerText = counters.total;
         document.getElementById('db-critico').innerText = counters.critico;
@@ -460,72 +478,17 @@
         document.getElementById('db-planejado').innerText = counters.planejado;
     }
 
-    // Carrega dados da Nuvem
-    async function loadProjectsFromCloud() {
-        if (!supabase) {
-            console.error('Supabase não está inicializado');
-            alert('Erro: Supabase não disponível. Recarregue a página.');
-            if (loadingMsg) loadingMsg.style.display = "none";
-            return;
-        }
-        
-        try {
-            if (loadingMsg) loadingMsg.style.display = "block";
-            const { data, error } = await supabase
-                .from('projects_hvc')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error("Erro ao carregar dados:", error);
-                alert("Erro ao carregar registros: " + (error.message || "Verifique a conexão"));
-                projects = [];
-            } else {
-                projects = Array.isArray(data) ? data : [];
-                console.log(`✓ ${projects.length} registros carregados`);
-            }
-            renderTable();
-        } catch (err) {
-            console.error('Erro inesperado ao carregar dados:', err);
-            alert('Erro inesperado: ' + err.message);
-            projects = [];
-            renderTable();
-        } finally {
-            if (loadingMsg) loadingMsg.style.display = "none";
-        }
-    }
-
     function renderTable() {
         tableBody.innerHTML = "";
-        
-        // Validar que projects é um array
-        if (!Array.isArray(projects)) {
-            console.error('projects não é um array válido:', projects);
-            projects = [];
-        }
-        
-        const selectedMonth = monthFilter ? monthFilter.value : 'ALL';
-        const searchText = searchInput ? searchInput.value.toLowerCase().trim() : '';
-        const selectedType = typeFilter ? typeFilter.value : 'ALL';
-        const selectedWhere = whereFilter ? whereFilter.value : 'ALL';
-        const selectedFarol = farolFilter ? farolFilter.value : 'ALL';
+        const selectedMonth = monthFilter.value;
+        const searchText = searchInput.value.toLowerCase().trim();
+        const selectedType = typeFilter.value;
+        const selectedWhere = whereFilter.value;
+        const selectedFarol = farolFilter.value;
         
         let dbCounters = { total: 0, critico: 0, atencao: 0, concluido: 0, planejado: 0 };
 
-        if (projects.length === 0) {
-            const emptyRow = document.createElement('tr');
-            emptyRow.innerHTML = '<td colspan="7" style="text-align:center; padding: 20px; color: #999;">Nenhum registro encontrado</td>';
-            tableBody.appendChild(emptyRow);
-            updateDashboard(dbCounters);
-            return;
-        }
-
         projects.forEach(p => {
-            // Validar campos obrigatórios
-            if (!p || !p.id || !p.what || !p.start_date || !p.when) {
-                console.warn('Registro incompleto:', p);
-                return;
-            }
             const totalTasks = p.checklist ? p.checklist.length : 0;
             const doneTasks = p.checklist ? p.checklist.filter(t => t.done).length : 0;
             const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
@@ -564,11 +527,11 @@
 
             const row = document.createElement('tr');
             let checklistHTML = `<div class="checklist-container">`;
-            if(p.checklist) {
+            if (p.checklist) {
                 p.checklist.forEach((item, index) => {
                     checklistHTML += `
                         <div class="checklist-item">
-                            <input type="checkbox" ${item.done ? 'checked' : ''} onchange="toggleTask('${p.id}', ${index})">
+                            <input type="checkbox" ${item.done ? 'checked' : ''} onchange="window.toggleTask('${p.id}', ${index})">
                             <span style="${item.done ? 'text-decoration: line-through; color: #888;' : ''}">${item.task}</span>
                         </div>
                     `;
@@ -591,8 +554,8 @@
                 </td>
                 <td><small>Recursos: ${p.howmuch || 'N/A'}</small><br><small style="color: #444;">Envolvidos: ${p.involved || 'N/A'}</small></td>
                 <td class="actions-btn">
-                    <button class="btn-action btn-edit" onclick="editProject('${p.id}')">Editar</button>
-                    <button class="btn-action btn-delete" onclick="deleteProject('${p.id}')">Excluir</button>
+                    <button class="btn-action btn-edit" onclick="window.editProject('${p.id}')">Editar</button>
+                    <button class="btn-action btn-delete" onclick="window.deleteProject('${p.id}')">Excluir</button>
                 </td>
             `;
             tableBody.appendChild(row);
@@ -601,189 +564,7 @@
         updateDashboard(dbCounters);
     }
 
-    window.toggleTask = async function(projectId, taskIndex) {
-        if (!supabase) {
-            alert('❌ Supabase não disponível');
-            return;
-        }
-        
-        const project = projects.find(p => p.id === projectId);
-        if (!project || !Array.isArray(project.checklist) || !project.checklist[taskIndex]) {
-            console.error('Projeto ou checklist inválido:', project);
-            alert('❌ Erro ao atualizar tarefa');
-            return;
-        }
-        
-        try {
-            project.checklist[taskIndex].done = !project.checklist[taskIndex].done;
-            const allDone = project.checklist.every(t => t.done);
-            
-            if (allDone) {
-                project.status = "Concluído";
-                if (!project.end_date) project.end_date = getLocalDateString();
-            } else {
-                project.status = "Em Andamento";
-                project.end_date = "";
-            }
-
-            loadingMsg.style.display = "block";
-            const { error } = await supabase.from('projects_hvc').update({ 
-                checklist: project.checklist, 
-                status: project.status, 
-                end_date: project.end_date 
-            }).eq('id', projectId);
-            
-            if (error) throw error;
-            await loadProjectsFromCloud();
-        } catch (err) {
-            console.error('Erro ao atualizar tarefa:', err);
-            alert('❌ Erro: ' + (err.message || 'Tente novamente'));
-        } finally {
-            loadingMsg.style.display = "none";
-        }
-    }
-
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        // Validar campos obrigatórios
-        const what = document.getElementById('form-what').value.trim();
-        const startDate = document.getElementById('form-start-date').value;
-        const when = document.getElementById('form-when').value;
-        const who = document.getElementById('form-who').value.trim();
-        const where = document.getElementById('form-where').value;
-        const checklist = document.getElementById('form-how-checklist').value.trim();
-        
-        if (!what || !startDate || !when || !who || !where || !checklist) {
-            alert('❌ Preencha todos os campos obrigatórios (marcados com *)!');
-            return;
-        }
-        
-        // Validar datas
-        if (new Date(startDate) > new Date(when)) {
-            alert('❌ A data de início não pode ser maior que o prazo final!');
-            return;
-        }
-        
-        if (!supabase) {
-            alert('❌ Supabase não está disponível. Recarregue a página.');
-            return;
-        }
-        
-        const id = document.getElementById('project-id').value;
-        const rawChecklistText = checklist;
-        const startDateValue = startDate;
-        const statusValue = document.getElementById('form-status').value;
-        
-        let checklistArray = [];
-        let savedEndDate = "";
-
-        if (id) {
-            const existingProject = projects.find(p => p.id === id);
-            savedEndDate = existingProject.end_date || "";
-            checklistArray = rawChecklistText.split(',').map((t, idx) => {
-                const cleanTask = t.trim();
-                const oldTask = existingProject.checklist[idx];
-                return { task: cleanTask, done: oldTask ? oldTask.done : false };
-            }).filter(t => t.task !== "");
-        } else {
-            checklistArray = rawChecklistText.split(',').map(t => ({ task: t.trim(), done: false })).filter(t => t.task !== "");
-        }
-
-        if (statusValue === "Concluído") {
-            if (!savedEndDate) savedEndDate = getLocalDateString();
-        } else {
-            savedEndDate = "";
-        }
-
-        const projectData = {
-            id: id || Date.now().toString(),
-            type: document.getElementById('form-type').value,
-            what: document.getElementById('form-what').value,
-            why: document.getElementById('form-why').value,
-            start_date: startDateValue,
-            when: document.getElementById('form-when').value,
-            end_date: savedEndDate,
-            where: document.getElementById('form-where').value,
-            who: document.getElementById('form-who').value,
-            status: statusValue,
-            howmuch: document.getElementById('form-howmuch').value,
-            involved: document.getElementById('form-involved').value,
-            checklist: checklistArray
-        };
-
-        try {
-            loadingMsg.style.display = "block";
-            if (id) {
-                const { error } = await supabase.from('projects_hvc').update(projectData).eq('id', id);
-                if (error) throw error;
-                console.log('✓ Registro atualizado com sucesso');
-                alert('✓ Registro atualizado com sucesso!');
-            } else {
-                const { error } = await supabase.from('projects_hvc').insert([projectData]);
-                if (error) throw error;
-                console.log('✓ Novo registro criado com sucesso');
-                alert('✓ Registro salvo com sucesso!');
-            }
-
-            if (monthFilter) monthFilter.value = startDateValue.substring(0, 7);
-            resetForm();
-            await loadProjectsFromCloud();
-        } catch (err) {
-            console.error('Erro ao salvar registro:', err);
-            alert('❌ Erro ao salvar: ' + (err.message || 'Tente novamente'));
-        } finally {
-            loadingMsg.style.display = "none";
-        }
-    });
-
-    window.editProject = function(id) {
-        const p = projects.find(p => p.id === id);
-        if (!p) return;
-
-        document.getElementById('project-id').value = p.id;
-        document.getElementById('form-type').value = p.type;
-        document.getElementById('form-what').value = p.what;
-        document.getElementById('form-why').value = p.why || "";
-        document.getElementById('form-start-date').value = p.start_date;
-        document.getElementById('form-when').value = p.when;
-        document.getElementById('form-where').value = p.where;
-        document.getElementById('form-who').value = p.who;
-        document.getElementById('form-status').value = p.status;
-        document.getElementById('form-howmuch').value = p.howmuch || "";
-        document.getElementById('form-involved').value = p.involved || "";
-        document.getElementById('form-how-checklist').value = p.checklist.map(t => t.task).join(', ');
-
-        document.getElementById('form-title').innerText = "Editar Registro";
-        document.getElementById('btn-submit').innerText = "Atualizar Registro";
-        document.getElementById('btn-cancel').style.display = "block";
-    }
-
-    window.deleteProject = async function(id) {
-        if (!supabase) {
-            alert('❌ Supabase não disponível');
-            return;
-        }
-        
-        if(confirm("⚠️ Deseja remover este registro DEFINITIVAMENTE da Nuvem?")) {
-            try {
-                loadingMsg.style.display = "block";
-                const { error } = await supabase.from('projects_hvc').delete().eq('id', id);
-                if (error) throw error;
-                console.log('✓ Registro deletado com sucesso');
-                alert('✓ Registro removido com sucesso!');
-                await loadProjectsFromCloud();
-                resetForm();
-            } catch (err) {
-                console.error('Erro ao deletar registro:', err);
-                alert('❌ Erro ao deletar: ' + (err.message || 'Tente novamente'));
-            } finally {
-                loadingMsg.style.display = "none";
-            }
-        }
-    }
-
-    window.resetForm = function() {
+    function resetForm() {
         form.reset();
         document.getElementById('project-id').value = "";
         document.getElementById('form-title').innerText = "Cadastrar Nova Entrega";
@@ -791,20 +572,388 @@
         document.getElementById('btn-cancel').style.display = "none";
     }
 
-    // Inicialização automática puxando os dados da nuvem
-    console.log('🚀 Iniciando aplicação FAROL...');
-    if (supabase) {
-        console.log('✓ Supabase pronto. Carregando dados...');
-        loadProjectsFromCloud();
-    } else {
-        console.error('✗ Supabase não inicializado. Verificando configuração...');
-        setTimeout(() => {
-            if (!supabase) {
-                alert('❌ Aplicação não pode iniciar. Recarregue a página e verifique os erros no console (F12).');
-                document.body.innerHTML = '<h2 style="color:red;padding:20px;">Erro ao conectar com Supabase. Verifique as credenciais e a conexão.</h2>';
-            }
-        }, 2000);
+    // ========================================
+    // VALIDAÇÃO
+    // ========================================
+    
+    function validateForm() {
+        const type = document.getElementById('form-type').value.trim();
+        const what = document.getElementById('form-what').value.trim();
+        const startDate = document.getElementById('form-start-date').value.trim();
+        const when = document.getElementById('form-when').value.trim();
+        const where = document.getElementById('form-where').value.trim();
+        const who = document.getElementById('form-who').value.trim();
+        const status = document.getElementById('form-status').value.trim();
+        const checklist = document.getElementById('form-how-checklist').value.trim();
+
+        if (!type) {
+            alert("❌ Tipo de Classificação é obrigatório");
+            return false;
+        }
+        if (!what) {
+            alert("❌ 'O que será feito' é obrigatório");
+            return false;
+        }
+        if (!startDate) {
+            alert("❌ Data de Início é obrigatória");
+            return false;
+        }
+        if (!when) {
+            alert("❌ Prazo Final é obrigatório");
+            return false;
+        }
+        if (new Date(startDate) > new Date(when)) {
+            alert("❌ Data de início não pode ser após o prazo final");
+            return false;
+        }
+        if (!where) {
+            alert("❌ Setor/Localização é obrigatório");
+            return false;
+        }
+        if (!who) {
+            alert("❌ Responsável é obrigatório");
+            return false;
+        }
+        if (!status) {
+            alert("❌ Status é obrigatório");
+            return false;
+        }
+        if (!checklist) {
+            alert("❌ Checklist é obrigatório");
+            return false;
+        }
+
+        return true;
     }
+
+    // ========================================
+    // CRUD - OPERAÇÕES COM SUPABASE
+    // ========================================
+    
+    async function loadProjectsFromCloud() {
+        try {
+            loadingMsg.style.display = "block";
+            const { data, error } = await db
+                .from('projects_hvc')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("❌ Erro ao carregar dados:", error);
+                alert("❌ Erro ao conectar com o banco de dados.\n\nDetalhes: " + error.message);
+                return;
+            }
+
+            projects = data || [];
+            renderTable();
+        } catch (error) {
+            console.error("❌ Erro inesperado ao carregar:", error);
+            alert("❌ Erro inesperado ao carregar dados.");
+        } finally {
+            loadingMsg.style.display = "none";
+        }
+    }
+
+    async function saveProject(projectData) {
+        try {
+            loadingMsg.style.display = "block";
+            const { data, error } = await db
+                .from('projects_hvc')
+                .insert([projectData])
+                .select();
+
+            if (error) {
+                console.error("❌ Erro ao inserir:", error);
+                alert("❌ Erro ao salvar registro.\n\nDetalhes: " + error.message);
+                return false;
+            }
+
+            console.log("✅ Registro salvo com sucesso:", data);
+            return true;
+        } catch (error) {
+            console.error("❌ Erro inesperado ao salvar:", error);
+            alert("❌ Erro inesperado ao salvar registro.");
+            return false;
+        } finally {
+            loadingMsg.style.display = "none";
+        }
+    }
+
+    async function updateProject(id, projectData) {
+        try {
+            loadingMsg.style.display = "block";
+            const { data, error } = await db
+                .from('projects_hvc')
+                .update(projectData)
+                .eq('id', id)
+                .select();
+
+            if (error) {
+                console.error("❌ Erro ao atualizar:", error);
+                alert("❌ Erro ao atualizar registro.\n\nDetalhes: " + error.message);
+                return false;
+            }
+
+            console.log("✅ Registro atualizado com sucesso:", data);
+            return true;
+        } catch (error) {
+            console.error("❌ Erro inesperado ao atualizar:", error);
+            alert("❌ Erro inesperado ao atualizar registro.");
+            return false;
+        } finally {
+            loadingMsg.style.display = "none";
+        }
+    }
+
+    async function deleteProjectFromCloud(id) {
+        try {
+            loadingMsg.style.display = "block";
+            const { error } = await db
+                .from('projects_hvc')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                console.error("❌ Erro ao deletar:", error);
+                alert("❌ Erro ao remover registro.\n\nDetalhes: " + error.message);
+                return false;
+            }
+
+            console.log("✅ Registro deletado com sucesso");
+            return true;
+        } catch (error) {
+            console.error("❌ Erro inesperado ao deletar:", error);
+            alert("❌ Erro inesperado ao remover registro.");
+            return false;
+        } finally {
+            loadingMsg.style.display = "none";
+        }
+    }
+
+    async function updateTaskToggle(projectId, checklist, status, endDate) {
+        try {
+            loadingMsg.style.display = "block";
+            const { data, error } = await db
+                .from('projects_hvc')
+                .update({
+                    checklist: checklist,
+                    status: status,
+                    end_date: endDate
+                })
+                .eq('id', projectId)
+                .select();
+
+            if (error) {
+                console.error("❌ Erro ao atualizar tarefa:", error);
+                alert("❌ Erro ao atualizar tarefa.\n\nDetalhes: " + error.message);
+                return false;
+            }
+
+            console.log("✅ Tarefa atualizada com sucesso");
+            return true;
+        } catch (error) {
+            console.error("❌ Erro inesperado ao atualizar tarefa:", error);
+            alert("❌ Erro inesperado ao atualizar tarefa.");
+            return false;
+        } finally {
+            loadingMsg.style.display = "none";
+        }
+    }
+
+    // ========================================
+    // FUNÇÕES GLOBAIS PARA HTML
+    // ========================================
+    
+    window.renderTable = renderTable;
+
+    window.resetForm = resetForm;
+
+    window.editProject = function(id) {
+        try {
+            const p = projects.find(p => p.id === id);
+            if (!p) {
+                console.error("❌ Projeto não encontrado");
+                return;
+            }
+
+            document.getElementById('project-id').value = p.id;
+            document.getElementById('form-type').value = p.type;
+            document.getElementById('form-what').value = p.what;
+            document.getElementById('form-why').value = p.why || "";
+            document.getElementById('form-start-date').value = p.start_date;
+            document.getElementById('form-when').value = p.when;
+            document.getElementById('form-where').value = p.where;
+            document.getElementById('form-who').value = p.who;
+            document.getElementById('form-status').value = p.status;
+            document.getElementById('form-howmuch').value = p.howmuch || "";
+            document.getElementById('form-involved').value = p.involved || "";
+            document.getElementById('form-how-checklist').value = p.checklist.map(t => t.task).join(', ');
+
+            document.getElementById('form-title').innerText = "Editar Registro";
+            document.getElementById('btn-submit').innerText = "Atualizar Registro";
+            document.getElementById('btn-cancel').style.display = "block";
+        } catch (error) {
+            console.error("❌ Erro ao editar projeto:", error);
+            alert("❌ Erro ao carregar dados do projeto.");
+        }
+    };
+
+    window.deleteProject = async function(id) {
+        try {
+            if (!confirm("Deseja remover este registro definitivamente da Nuvem?")) {
+                return;
+            }
+
+            const success = await deleteProjectFromCloud(id);
+            if (success) {
+                await loadProjectsFromCloud();
+                resetForm();
+            }
+        } catch (error) {
+            console.error("❌ Erro ao deletar projeto:", error);
+            alert("❌ Erro ao remover projeto.");
+        }
+    };
+
+    window.toggleTask = async function(projectId, taskIndex) {
+        try {
+            const project = projects.find(p => p.id === projectId);
+            if (!project) {
+                console.error("❌ Projeto não encontrado");
+                return;
+            }
+
+            project.checklist[taskIndex].done = !project.checklist[taskIndex].done;
+            const allDone = project.checklist.every(t => t.done);
+            
+            if (allDone) {
+                project.status = "Concluído";
+                if (!project.end_date) {
+                    project.end_date = getLocalDateString();
+                }
+            } else {
+                project.status = "Em Andamento";
+                project.end_date = "";
+            }
+
+            const success = await updateTaskToggle(projectId, project.checklist, project.status, project.end_date);
+            if (success) {
+                await loadProjectsFromCloud();
+            }
+        } catch (error) {
+            console.error("❌ Erro ao alternar tarefa:", error);
+            alert("❌ Erro ao atualizar tarefa.");
+        }
+    };
+
+    // ========================================
+    // REGISTRAR EVENTOS
+    // ========================================
+    
+    function registerEventListeners() {
+        // Filtros disparam renderização
+        monthFilter.addEventListener('change', renderTable);
+        searchInput.addEventListener('keyup', renderTable);
+        typeFilter.addEventListener('change', renderTable);
+        whereFilter.addEventListener('change', renderTable);
+        farolFilter.addEventListener('change', renderTable);
+
+        // Formulário
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!validateForm()) {
+                return;
+            }
+
+            const id = document.getElementById('project-id').value;
+            const rawChecklistText = document.getElementById('form-how-checklist').value;
+            const startDateValue = document.getElementById('form-start-date').value;
+            const statusValue = document.getElementById('form-status').value;
+            
+            let checklistArray = [];
+            let savedEndDate = "";
+
+            if (id) {
+                const existingProject = projects.find(p => p.id === id);
+                savedEndDate = existingProject.end_date || "";
+                checklistArray = rawChecklistText.split(',').map((t, idx) => {
+                    const cleanTask = t.trim();
+                    const oldTask = existingProject.checklist[idx];
+                    return { task: cleanTask, done: oldTask ? oldTask.done : false };
+                }).filter(t => t.task !== "");
+            } else {
+                checklistArray = rawChecklistText.split(',').map(t => ({ task: t.trim(), done: false })).filter(t => t.task !== "");
+            }
+
+            if (statusValue === "Concluído") {
+                if (!savedEndDate) {
+                    savedEndDate = getLocalDateString();
+                }
+            } else {
+                savedEndDate = "";
+            }
+
+            const projectData = {
+                id: id || Date.now().toString(),
+                type: document.getElementById('form-type').value,
+                what: document.getElementById('form-what').value,
+                why: document.getElementById('form-why').value,
+                start_date: startDateValue,
+                when: document.getElementById('form-when').value,
+                end_date: savedEndDate,
+                where: document.getElementById('form-where').value,
+                who: document.getElementById('form-who').value,
+                status: statusValue,
+                howmuch: document.getElementById('form-howmuch').value,
+                involved: document.getElementById('form-involved').value,
+                checklist: checklistArray
+            };
+
+            let success = false;
+            if (id) {
+                success = await updateProject(id, projectData);
+            } else {
+                success = await saveProject(projectData);
+            }
+
+            if (success) {
+                monthFilter.value = startDateValue.substring(0, 7);
+                resetForm();
+                await loadProjectsFromCloud();
+            }
+        });
+    }
+
+    // ========================================
+    // INICIALIZAÇÃO PRINCIPAL
+    // ========================================
+    
+    async function init() {
+        try {
+            console.log("🚀 Iniciando aplicação FAROL...");
+            
+            // Cache elementos DOM
+            cacheElements();
+            
+            // Registra eventos
+            registerEventListeners();
+            
+            // Carrega projetos da nuvem
+            await loadProjectsFromCloud();
+            
+            console.log("✅ Aplicação FAROL inicializada com sucesso!");
+        } catch (error) {
+            console.error("❌ Erro durante inicialização:", error);
+            alert("❌ Erro ao inicializar a aplicação.");
+        }
+    }
+
+    // ========================================
+    // EXECUTAR APÓS DOM CARREGAR
+    // ========================================
+    
+    document.addEventListener('DOMContentLoaded', init);
 </script>
 </body>
 </html>

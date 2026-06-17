@@ -497,7 +497,7 @@
             const projectMonth = p.start_date.substring(0, 7);
             if (selectedMonth !== "ALL" && projectMonth !== selectedMonth) return;
             if (selectedType !== "ALL" && p.type !== selectedType) return;
-            if (selectedWhere !== "ALL" && p.where !== selectedWhere) return;
+            if (selectedWhere !== "ALL" && p.where_setor !== selectedWhere) return;
             if (selectedFarol !== "ALL" && farolInfo.label !== selectedFarol) return;
 
             if (searchText !== "") {
@@ -546,7 +546,7 @@
                     <strong>${p.what}</strong><br><small style="color:#666">${p.why || ''}</small>
                 </td>
                 <td>${timeDisplayHTML}</td>
-                <td><strong>${p.who}</strong><br><span class="badge-status">${p.where}</span></td>
+                <td><strong>${p.who}</strong><br><span class="badge-status">${p.where_setor}</span></td>
                 <td>
                     <strong>Progresso: ${progressPercent}%</strong>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${progressPercent}%"></div></div>
@@ -581,7 +581,7 @@
         const what = document.getElementById('form-what').value.trim();
         const startDate = document.getElementById('form-start-date').value.trim();
         const when = document.getElementById('form-when').value.trim();
-        const where = document.getElementById('form-where').value.trim();
+        const whereSetor = document.getElementById('form-where').value.trim();
         const who = document.getElementById('form-who').value.trim();
         const status = document.getElementById('form-status').value.trim();
         const checklist = document.getElementById('form-how-checklist').value.trim();
@@ -606,7 +606,7 @@
             alert("❌ Data de início não pode ser após o prazo final");
             return false;
         }
-        if (!where) {
+        if (!whereSetor) {
             alert("❌ Setor/Localização é obrigatório");
             return false;
         }
@@ -635,7 +635,7 @@
             loadingMsg.style.display = "block";
             const { data, error } = await db
                 .from('projects_hvc')
-                .select('*')
+                .select('id,type,what,why,start_date,when,end_date,where_setor,who,status,howmuch,involved,checklist,created_at')
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -782,7 +782,7 @@
             document.getElementById('form-why').value = p.why || "";
             document.getElementById('form-start-date').value = p.start_date;
             document.getElementById('form-when').value = p.when;
-            document.getElementById('form-where').value = p.where;
+            document.getElementById('form-where').value = p.where_setor;
             document.getElementById('form-who').value = p.who;
             document.getElementById('form-status').value = p.status;
             document.getElementById('form-howmuch').value = p.howmuch || "";
@@ -851,13 +851,6 @@
     // ========================================
     
     function registerEventListeners() {
-        // Filtros disparam renderização
-        monthFilter.addEventListener('change', renderTable);
-        searchInput.addEventListener('keyup', renderTable);
-        typeFilter.addEventListener('change', renderTable);
-        whereFilter.addEventListener('change', renderTable);
-        farolFilter.addEventListener('change', renderTable);
-
         // Formulário
         form.addEventListener('submit', async function(e) {
             e.preventDefault();
@@ -902,7 +895,7 @@
                 start_date: startDateValue,
                 when: document.getElementById('form-when').value,
                 end_date: savedEndDate,
-                where: document.getElementById('form-where').value,
+                where_setor: document.getElementById('form-where').value,
                 who: document.getElementById('form-who').value,
                 status: statusValue,
                 howmuch: document.getElementById('form-howmuch').value,

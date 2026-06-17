@@ -394,9 +394,20 @@
 <script>
     // Configurações do Supabase - INSIRA SEUS DADOS AQUI!
     const SUPABASE_URL = "https://kyylikreczszuzumrqrl.supabase.co";
-    const SUPABASE_KEY = "sb_publishable_fcY6S9xKkIeqPpKWP5Y7Bg_xUdTT63d";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt5eWxpa3JlY3pzenV6dW1ycXJsIiwicm9sZSI6ImFub24iLCJpYXQiOjE2MzU3MzE5OTksImV4cCI6MTk1MTMwNzk5OX0.sb_publishable_fcY6S9xKkIeqPpKWP5Y7Bg_xUdTT63d";
 
-    const supabase = createClient.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let supabase = null;
+    try {
+        if (!window.supabase) {
+            throw new Error('Biblioteca Supabase não carregada. Verifique a importação do CDN.');
+        }
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        console.log('✓ Supabase inicializado com sucesso');
+    } catch (err) {
+        console.error('✗ Erro ao inicializar Supabase:', err);
+        alert('Erro crítico ao conectar com Supabase. Detalhes: ' + err.message);
+        supabase = null;
+    }
 
     let projects = [];
 
@@ -408,6 +419,12 @@
     const whereFilter = document.getElementById('where-filter');
     const farolFilter = document.getElementById('farol-filter');
     const loadingMsg = document.getElementById('loading-msg');
+    
+    // Validar que os elementos estão presentes
+    if (!form || !tableBody) {
+        console.error('Elementos essenciais do DOM não encontrados');
+        alert('Erro: Página não carregada corretamente');
+    }
 
     function getLocalDateString() {
         const d = new Date();
@@ -445,33 +462,70 @@
 
     // Carrega dados da Nuvem
     async function loadProjectsFromCloud() {
-        loadingMsg.style.display = "block";
-        const { data, error } = await supabase
-            .from('projects_hvc')
-            .select('*')
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error("Erro ao carregar dados:", error);
-            alert("Erro ao conectar com o banco de dados.");
-        } else {
-            projects = data || [];
-            renderTable();
+        if (!supabase) {
+            console.error('Supabase não está inicializado');
+            alert('Erro: Supabase não disponível. Recarregue a página.');
+            if (loadingMsg) loadingMsg.style.display = "none";
+            return;
         }
-        loadingMsg.style.display = "none";
+        
+        try {
+            if (loadingMsg) loadingMsg.style.display = "block";
+            const { data, error } = await supabase
+                .from('projects_hvc')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error("Erro ao carregar dados:", error);
+                alert("Erro ao carregar registros: " + (error.message || "Verifique a conexão"));
+                projects = [];
+            } else {
+                projects = Array.isArray(data) ? data : [];
+                console.log(`✓ ${projects.length} registros carregados`);
+            }
+            renderTable();
+        } catch (err) {
+            console.error('Erro inesperado ao carregar dados:', err);
+            alert('Erro inesperado: ' + err.message);
+            projects = [];
+            renderTable();
+        } finally {
+            if (loadingMsg) loadingMsg.style.display = "none";
+        }
     }
 
     function renderTable() {
         tableBody.innerHTML = "";
-        const selectedMonth = monthFilter.value;
-        const searchText = searchInput.value.toLowerCase().trim();
-        const selectedType = typeFilter.value;
-        const selectedWhere = whereFilter.value;
-        const selectedFarol = farolFilter.value;
+        
+        // Validar que projects é um array
+        if (!Array.isArray(projects)) {
+            console.error('projects não é um array válido:', projects);
+            projects = [];
+        }
+        
+        const selectedMonth = monthFilter ? monthFilter.value : 'ALL';
+        const searchText = searchInput ? searchInput.value.toLowerCase().trim() : '';
+        const selectedType = typeFilter ? typeFilter.value : 'ALL';
+        const selectedWhere = whereFilter ? whereFilter.value : 'ALL';
+        const selectedFarol = farolFilter ? farolFilter.value : 'ALL';
         
         let dbCounters = { total: 0, critico: 0, atencao: 0, concluido: 0, planejado: 0 };
 
+        if (projects.length === 0) {
+            const emptyRow = document.createElement('tr');
+            emptyRow.innerHTML = '<td colspan="7" style="text-align:center; padding: 20px; color: #999;">Nenhum registro encontrado</td>';
+            tableBody.appendChild(emptyRow);
+            updateDashboard(dbCounters);
+            return;
+        }
+
         projects.forEach(p => {
+            // Validar campos obrigatórios
+            if (!p || !p.id || !p.what || !p.start_date || !p.when) {
+                console.warn('Registro incompleto:', p);
+                return;
+            }
             const totalTasks = p.checklist ? p.checklist.length : 0;
             const doneTasks = p.checklist ? p.checklist.filter(t => t.done).length : 0;
             const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
@@ -548,8 +602,19 @@
     }
 
     window.toggleTask = async function(projectId, taskIndex) {
+        if (!supabase) {
+            alert('❌ Supabase não disponível');
+            return;
+        }
+        
         const project = projects.find(p => p.id === projectId);
-        if (project) {
+        if (!project || !Array.isArray(project.checklist) || !project.checklist[taskIndex]) {
+            console.error('Projeto ou checklist inválido:', project);
+            alert('❌ Erro ao atualizar tarefa');
+            return;
+        }
+        
+        try {
             project.checklist[taskIndex].done = !project.checklist[taskIndex].done;
             const allDone = project.checklist.every(t => t.done);
             
@@ -562,21 +627,52 @@
             }
 
             loadingMsg.style.display = "block";
-            await supabase.from('projects_hvc').update({ 
+            const { error } = await supabase.from('projects_hvc').update({ 
                 checklist: project.checklist, 
                 status: project.status, 
                 end_date: project.end_date 
             }).eq('id', projectId);
             
-            loadProjectsFromCloud();
+            if (error) throw error;
+            await loadProjectsFromCloud();
+        } catch (err) {
+            console.error('Erro ao atualizar tarefa:', err);
+            alert('❌ Erro: ' + (err.message || 'Tente novamente'));
+        } finally {
+            loadingMsg.style.display = "none";
         }
     }
 
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
+        
+        // Validar campos obrigatórios
+        const what = document.getElementById('form-what').value.trim();
+        const startDate = document.getElementById('form-start-date').value;
+        const when = document.getElementById('form-when').value;
+        const who = document.getElementById('form-who').value.trim();
+        const where = document.getElementById('form-where').value;
+        const checklist = document.getElementById('form-how-checklist').value.trim();
+        
+        if (!what || !startDate || !when || !who || !where || !checklist) {
+            alert('❌ Preencha todos os campos obrigatórios (marcados com *)!');
+            return;
+        }
+        
+        // Validar datas
+        if (new Date(startDate) > new Date(when)) {
+            alert('❌ A data de início não pode ser maior que o prazo final!');
+            return;
+        }
+        
+        if (!supabase) {
+            alert('❌ Supabase não está disponível. Recarregue a página.');
+            return;
+        }
+        
         const id = document.getElementById('project-id').value;
-        const rawChecklistText = document.getElementById('form-how-checklist').value;
-        const startDateValue = document.getElementById('form-start-date').value;
+        const rawChecklistText = checklist;
+        const startDateValue = startDate;
         const statusValue = document.getElementById('form-status').value;
         
         let checklistArray = [];
@@ -616,16 +712,29 @@
             checklist: checklistArray
         };
 
-        loadingMsg.style.display = "block";
-        if (id) {
-            await supabase.from('projects_hvc').update(projectData).eq('id', id);
-        } else {
-            await supabase.from('projects_hvc').insert([projectData]);
-        }
+        try {
+            loadingMsg.style.display = "block";
+            if (id) {
+                const { error } = await supabase.from('projects_hvc').update(projectData).eq('id', id);
+                if (error) throw error;
+                console.log('✓ Registro atualizado com sucesso');
+                alert('✓ Registro atualizado com sucesso!');
+            } else {
+                const { error } = await supabase.from('projects_hvc').insert([projectData]);
+                if (error) throw error;
+                console.log('✓ Novo registro criado com sucesso');
+                alert('✓ Registro salvo com sucesso!');
+            }
 
-        monthFilter.value = startDateValue.substring(0, 7);
-        resetForm();
-        loadProjectsFromCloud();
+            if (monthFilter) monthFilter.value = startDateValue.substring(0, 7);
+            resetForm();
+            await loadProjectsFromCloud();
+        } catch (err) {
+            console.error('Erro ao salvar registro:', err);
+            alert('❌ Erro ao salvar: ' + (err.message || 'Tente novamente'));
+        } finally {
+            loadingMsg.style.display = "none";
+        }
     });
 
     window.editProject = function(id) {
@@ -651,11 +760,26 @@
     }
 
     window.deleteProject = async function(id) {
-        if(confirm("Deseja remover este registro definitivamente da Nuvem?")) {
-            loadingMsg.style.display = "block";
-            await supabase.from('projects_hvc').delete().eq('id', id);
-            loadProjectsFromCloud();
-            resetForm();
+        if (!supabase) {
+            alert('❌ Supabase não disponível');
+            return;
+        }
+        
+        if(confirm("⚠️ Deseja remover este registro DEFINITIVAMENTE da Nuvem?")) {
+            try {
+                loadingMsg.style.display = "block";
+                const { error } = await supabase.from('projects_hvc').delete().eq('id', id);
+                if (error) throw error;
+                console.log('✓ Registro deletado com sucesso');
+                alert('✓ Registro removido com sucesso!');
+                await loadProjectsFromCloud();
+                resetForm();
+            } catch (err) {
+                console.error('Erro ao deletar registro:', err);
+                alert('❌ Erro ao deletar: ' + (err.message || 'Tente novamente'));
+            } finally {
+                loadingMsg.style.display = "none";
+            }
         }
     }
 
@@ -668,7 +792,19 @@
     }
 
     // Inicialização automática puxando os dados da nuvem
-    loadProjectsFromCloud();
+    console.log('🚀 Iniciando aplicação FAROL...');
+    if (supabase) {
+        console.log('✓ Supabase pronto. Carregando dados...');
+        loadProjectsFromCloud();
+    } else {
+        console.error('✗ Supabase não inicializado. Verificando configuração...');
+        setTimeout(() => {
+            if (!supabase) {
+                alert('❌ Aplicação não pode iniciar. Recarregue a página e verifique os erros no console (F12).');
+                document.body.innerHTML = '<h2 style="color:red;padding:20px;">Erro ao conectar com Supabase. Verifique as credenciais e a conexão.</h2>';
+            }
+        }, 2000);
+    }
 </script>
 </body>
 </html>

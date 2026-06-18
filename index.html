@@ -175,8 +175,8 @@
 
 <header>
     <div class="title-area">
-        <h1>FAROL — Medicina Diagnóstica CAMPINAS </h1>
-        <p>Painel Sincronizado em Tempo Real | ADM</p>
+        <h1>FAROL - Medicina Diagnóstica Campinas</h1>
+        <p>Painel Cloud Sincronizado em Tempo Real | ADMINISTRATIVO</p>
     </div>
     <div class="filter-area">
         <label for="month-filter">Visão Mensal:</label>
@@ -435,6 +435,82 @@
         return localDate.toISOString().split('T')[0];
     }
 
+    function normalizeDate(value) {
+        if (value === null || value === undefined) return null;
+        const v = typeof value === 'string' ? value.trim() : String(value);
+        if (v === '' || v.toLowerCase() === 'invalid date') return null;
+        const d = new Date(v);
+        if (isNaN(d.getTime())) return null;
+        return d.toISOString().split('T')[0];
+    }
+
+    function normalizeChecklist(value) {
+        if (!value) return [];
+        if (Array.isArray(value)) {
+            return value.map(item => {
+                if (typeof item === 'string') return { task: item.trim(), done: false };
+                return { task: (item.task || '').toString().trim(), done: !!item.done };
+            }).filter(item => item.task !== '');
+        }
+        if (typeof value === 'string') {
+            const trimmed = value.trim();
+            try {
+                const parsed = JSON.parse(trimmed);
+                if (Array.isArray(parsed)) return normalizeChecklist(parsed);
+            } catch (e) {
+                return trimmed.split(',').map(t => ({ task: t.trim(), done: false })).filter(item => item.task !== '');
+            }
+        }
+        return [];
+    }
+
+    function handleError(error, userMessage) {
+        console.error(error);
+        if (userMessage) {
+            alert(userMessage + (error && error.message ? '\n\nDetalhes: ' + error.message : ''));
+        }
+    }
+
+    function showSuccess(message) {
+        console.log(message);
+    }
+
+    function dbToProject(record) {
+        return {
+            id: record.id,
+            type: (record.type || '').toString().trim(),
+            what: (record.what || '').toString().trim(),
+            why: (record.why || '').toString().trim(),
+            startDate: normalizeDate(record.start_date),
+            dueDate: normalizeDate(record.when),
+            endDate: normalizeDate(record.end_date),
+            whereSetor: (record.where_setor || '').toString().trim(),
+            who: (record.who || '').toString().trim(),
+            status: (record.status || '').toString().trim(),
+            howMuch: (record.howmuch || '').toString().trim(),
+            involved: (record.involved || '').toString().trim(),
+            checklist: normalizeChecklist(record.checklist),
+            createdAt: record.created_at
+        };
+    }
+
+    function projectToDb(project) {
+        return {
+            type: project.type,
+            what: project.what,
+            why: project.why,
+            start_date: project.startDate,
+            when: project.dueDate,
+            end_date: project.endDate,
+            where_setor: project.whereSetor,
+            who: project.who,
+            status: project.status,
+            howmuch: project.howMuch,
+            involved: project.involved,
+            checklist: project.checklist
+        };
+    }
+
     function calculateDaysBetween(startStr, endStr) {
         if (!startStr || !endStr) return 0;
         const start = new Date(startStr);
@@ -451,7 +527,13 @@
         }
         const today = new Date();
         today.setHours(0, 0, 0, 0);
-        const deadline = new Date(project.when);
+        if (!project.dueDate) {
+            return { emoji: "🔵", label: "planejado" };
+        }
+        const deadline = new Date(project.dueDate);
+        if (isNaN(deadline.getTime())) {
+            return { emoji: "🔵", label: "planejado" };
+        }
         deadline.setHours(0, 0, 0, 0);
         if (today > deadline) {
             return { emoji: "🔴", label: "critico" };
@@ -489,50 +571,52 @@
         let dbCounters = { total: 0, critico: 0, atencao: 0, concluido: 0, planejado: 0 };
 
         projects.forEach(p => {
-            const totalTasks = p.checklist ? p.checklist.length : 0;
-            const doneTasks = p.checklist ? p.checklist.filter(t => t.done).length : 0;
+            const checklist = Array.isArray(p.checklist) ? p.checklist : [];
+            const totalTasks = checklist.length;
+            const doneTasks = checklist.filter(t => t.done).length;
             const progressPercent = totalTasks > 0 ? Math.round((doneTasks / totalTasks) * 100) : 0;
             const farolInfo = calculateFarol(p, progressPercent);
 
-            const projectMonth = p.start_date.substring(0, 7);
+            const projectMonth = p.startDate ? p.startDate.substring(0, 7) : null;
             if (selectedMonth !== "ALL" && projectMonth !== selectedMonth) return;
             if (selectedType !== "ALL" && p.type !== selectedType) return;
-            if (selectedWhere !== "ALL" && p.where_setor !== selectedWhere) return;
+            if (selectedWhere !== "ALL" && p.whereSetor !== selectedWhere) return;
             if (selectedFarol !== "ALL" && farolInfo.label !== selectedFarol) return;
 
             if (searchText !== "") {
-                const matchWhat = p.what.toLowerCase().includes(searchText);
+                const matchWhat = (p.what || '').toLowerCase().includes(searchText);
                 const matchWhy = (p.why || "").toLowerCase().includes(searchText);
-                const matchWho = p.who.toLowerCase().includes(searchText);
+                const matchWho = (p.who || '').toLowerCase().includes(searchText);
                 if (!matchWhat && !matchWhy && !matchWho) return;
             }
 
             dbCounters.total++;
             dbCounters[farolInfo.label]++;
 
-            const totalProjectDays = calculateDaysBetween(p.start_date, p.when);
+            const totalProjectDays = calculateDaysBetween(p.startDate, p.dueDate);
             let timeDisplayHTML = `
-                <small>Início: ${p.start_date.split('-').reverse().join('/')}</small><br>
-                <small>Prazo: ${p.when.split('-').reverse().join('/')}</small><br>
+                <small>Início: ${p.startDate ? p.startDate.split('-').reverse().join('/') : 'N/A'}</small><br>
+                <small>Prazo: ${p.dueDate ? p.dueDate.split('-').reverse().join('/') : 'N/A'}</small><br>
                 <strong>Tempo do Projeto: ${totalProjectDays} dias</strong>
             `;
 
-            if (p.status === "Concluído" && p.end_date) {
-                const actualLeadTime = calculateDaysBetween(p.start_date, p.end_date);
+            if (p.status === "Concluído" && p.endDate) {
+                const actualLeadTime = calculateDaysBetween(p.startDate, p.endDate);
                 timeDisplayHTML += `<br><span style="color: #28a745; font-weight: bold;">
-                    ✓ Concluído em: ${p.end_date.split('-').reverse().join('/')}<br>
+                    ✓ Concluído em: ${p.endDate.split('-').reverse().join('/')}<br>
                     Tempo de Execução: ${actualLeadTime} dias
                 </span>`;
             }
 
             const row = document.createElement('tr');
             let checklistHTML = `<div class="checklist-container">`;
-            if (p.checklist) {
-                p.checklist.forEach((item, index) => {
+            if (checklist.length) {
+                checklist.forEach((item, index) => {
+                    const safeTask = item && item.task ? item.task : '';
                     checklistHTML += `
                         <div class="checklist-item">
                             <input type="checkbox" ${item.done ? 'checked' : ''} onchange="window.toggleTask('${p.id}', ${index})">
-                            <span style="${item.done ? 'text-decoration: line-through; color: #888;' : ''}">${item.task}</span>
+                            <span style="${item.done ? 'text-decoration: line-through; color: #888;' : ''}">${safeTask}</span>
                         </div>
                     `;
                 });
@@ -543,16 +627,16 @@
                 <td class="farol-cell">${farolInfo.emoji}</td>
                 <td>
                     <span class="badge-type">${p.type === 'Projeto' ? '🚀 Projeto' : '📋 Demanda'}</span><br>
-                    <strong>${p.what}</strong><br><small style="color:#666">${p.why || ''}</small>
+                    <strong>${p.what || ''}</strong><br><small style="color:#666">${p.why || ''}</small>
                 </td>
                 <td>${timeDisplayHTML}</td>
-                <td><strong>${p.who}</strong><br><span class="badge-status">${p.where_setor}</span></td>
+                <td><strong>${p.who || ''}</strong><br><span class="badge-status">${p.whereSetor || ''}</span></td>
                 <td>
                     <strong>Progresso: ${progressPercent}%</strong>
                     <div class="progress-bar-bg"><div class="progress-bar-fill" style="width: ${progressPercent}%"></div></div>
                     ${checklistHTML}
                 </td>
-                <td><small>Recursos: ${p.howmuch || 'N/A'}</small><br><small style="color: #444;">Envolvidos: ${p.involved || 'N/A'}</small></td>
+                <td><small>Recursos: ${p.howMuch || 'N/A'}</small><br><small style="color: #444;">Envolvidos: ${p.involved || 'N/A'}</small></td>
                 <td class="actions-btn">
                     <button class="btn-action btn-edit" onclick="window.editProject('${p.id}')">Editar</button>
                     <button class="btn-action btn-delete" onclick="window.deleteProject('${p.id}')">Excluir</button>
@@ -639,16 +723,15 @@
                 .order('created_at', { ascending: false });
 
             if (error) {
-                console.error("❌ Erro ao carregar dados:", error);
-                alert("❌ Erro ao conectar com o banco de dados.\n\nDetalhes: " + error.message);
+                handleError(error, "❌ Erro ao conectar com o banco de dados.");
                 return;
             }
 
-            projects = data || [];
+            projects = (data || []).map(r => dbToProject(r));
+
             renderTable();
         } catch (error) {
-            console.error("❌ Erro inesperado ao carregar:", error);
-            alert("❌ Erro inesperado ao carregar dados.");
+            handleError(error, "❌ Erro inesperado ao carregar dados.");
         } finally {
             loadingMsg.style.display = "none";
         }
@@ -657,22 +740,22 @@
     async function saveProject(projectData) {
         try {
             loadingMsg.style.display = "block";
+            const payload = projectToDb(projectData);
             const { data, error } = await db
                 .from('projects_hvc')
-                .insert([projectData])
+                .insert([payload])
                 .select();
 
             if (error) {
-                console.error("❌ Erro ao inserir:", error);
-                alert("❌ Erro ao salvar registro.\n\nDetalhes: " + error.message);
+                handleError(error, "❌ Erro ao salvar registro.");
                 return false;
             }
 
-            console.log("✅ Registro salvo com sucesso:", data);
+            showSuccess("✅ Registro salvo com sucesso");
+            console.log(data);
             return true;
         } catch (error) {
-            console.error("❌ Erro inesperado ao salvar:", error);
-            alert("❌ Erro inesperado ao salvar registro.");
+            handleError(error, "❌ Erro inesperado ao salvar registro.");
             return false;
         } finally {
             loadingMsg.style.display = "none";
@@ -682,23 +765,23 @@
     async function updateProject(id, projectData) {
         try {
             loadingMsg.style.display = "block";
+            const payload = projectToDb(projectData);
             const { data, error } = await db
                 .from('projects_hvc')
-                .update(projectData)
+                .update(payload)
                 .eq('id', id)
                 .select();
 
             if (error) {
-                console.error("❌ Erro ao atualizar:", error);
-                alert("❌ Erro ao atualizar registro.\n\nDetalhes: " + error.message);
+                handleError(error, "❌ Erro ao atualizar registro.");
                 return false;
             }
 
-            console.log("✅ Registro atualizado com sucesso:", data);
+            showSuccess("✅ Registro atualizado com sucesso");
+            console.log(data);
             return true;
         } catch (error) {
-            console.error("❌ Erro inesperado ao atualizar:", error);
-            alert("❌ Erro inesperado ao atualizar registro.");
+            handleError(error, "❌ Erro inesperado ao atualizar registro.");
             return false;
         } finally {
             loadingMsg.style.display = "none";
@@ -780,14 +863,14 @@
             document.getElementById('form-type').value = p.type;
             document.getElementById('form-what').value = p.what;
             document.getElementById('form-why').value = p.why || "";
-            document.getElementById('form-start-date').value = p.start_date;
-            document.getElementById('form-when').value = p.when;
-            document.getElementById('form-where').value = p.where_setor;
+            document.getElementById('form-start-date').value = p.startDate;
+            document.getElementById('form-when').value = p.dueDate;
+            document.getElementById('form-where').value = p.whereSetor;
             document.getElementById('form-who').value = p.who;
             document.getElementById('form-status').value = p.status;
-            document.getElementById('form-howmuch').value = p.howmuch || "";
+            document.getElementById('form-howmuch').value = p.howMuch || "";
             document.getElementById('form-involved').value = p.involved || "";
-            document.getElementById('form-how-checklist').value = p.checklist.map(t => t.task).join(', ');
+            document.getElementById('form-how-checklist').value = normalizeChecklist(p.checklist).map(t => t.task).join(', ');
 
             document.getElementById('form-title').innerText = "Editar Registro";
             document.getElementById('btn-submit').innerText = "Atualizar Registro";
@@ -823,26 +906,32 @@
                 return;
             }
 
-            project.checklist[taskIndex].done = !project.checklist[taskIndex].done;
+            project.checklist = Array.isArray(project.checklist) ? project.checklist : normalizeChecklist(project.checklist);
+            const task = project.checklist[taskIndex];
+            if (!task) {
+                console.error("❌ Tarefa não encontrada no checklist");
+                return;
+            }
+
+            task.done = !task.done;
             const allDone = project.checklist.every(t => t.done);
             
             if (allDone) {
                 project.status = "Concluído";
-                if (!project.end_date) {
-                    project.end_date = getLocalDateString();
+                if (!project.endDate) {
+                    project.endDate = getLocalDateString();
                 }
             } else {
                 project.status = "Em Andamento";
-                project.end_date = "";
+                project.endDate = null;
             }
 
-            const success = await updateTaskToggle(projectId, project.checklist, project.status, project.end_date);
+            const success = await updateTaskToggle(projectId, project.checklist, project.status, project.endDate);
             if (success) {
                 await loadProjectsFromCloud();
             }
         } catch (error) {
-            console.error("❌ Erro ao alternar tarefa:", error);
-            alert("❌ Erro ao atualizar tarefa.");
+            handleError(error, "❌ Erro ao atualizar tarefa.");
         }
     };
 
@@ -864,42 +953,37 @@
             const startDateValue = document.getElementById('form-start-date').value;
             const statusValue = document.getElementById('form-status').value;
             
-            let checklistArray = [];
-            let savedEndDate = "";
+            // Preparar checklist preservando flags antigas quando possível
+            const existingProject = id ? projects.find(p => p.id === id) : null;
+            const existingChecklist = existingProject ? normalizeChecklist(existingProject.checklist) : [];
+            const providedTasks = (rawChecklistText || '').split(',').map(t => t.trim()).filter(t => t !== '');
+            const checklistArray = providedTasks.map((task) => {
+                const match = existingChecklist.find(c => c.task.toLowerCase() === task.toLowerCase());
+                return { task: task, done: match ? !!match.done : false };
+            });
 
-            if (id) {
-                const existingProject = projects.find(p => p.id === id);
-                savedEndDate = existingProject.end_date || "";
-                checklistArray = rawChecklistText.split(',').map((t, idx) => {
-                    const cleanTask = t.trim();
-                    const oldTask = existingProject.checklist[idx];
-                    return { task: cleanTask, done: oldTask ? oldTask.done : false };
-                }).filter(t => t.task !== "");
-            } else {
-                checklistArray = rawChecklistText.split(',').map(t => ({ task: t.trim(), done: false })).filter(t => t.task !== "");
-            }
-
+            // Normalizar datas
+            const normalizedStart = normalizeDate(startDateValue);
+            const normalizedWhen = normalizeDate(document.getElementById('form-when').value);
+            let savedEndDate = existingProject ? normalizeDate(existingProject.endDate) : null;
             if (statusValue === "Concluído") {
-                if (!savedEndDate) {
-                    savedEndDate = getLocalDateString();
-                }
+                if (!savedEndDate) savedEndDate = getLocalDateString();
             } else {
-                savedEndDate = "";
+                savedEndDate = null;
             }
 
             const projectData = {
-                id: id || Date.now().toString(),
-                type: document.getElementById('form-type').value,
-                what: document.getElementById('form-what').value,
-                why: document.getElementById('form-why').value,
-                start_date: startDateValue,
-                when: document.getElementById('form-when').value,
-                end_date: savedEndDate,
-                where_setor: document.getElementById('form-where').value,
-                who: document.getElementById('form-who').value,
+                type: document.getElementById('form-type').value.trim(),
+                what: document.getElementById('form-what').value.trim(),
+                why: document.getElementById('form-why').value.trim(),
+                startDate: normalizedStart,
+                dueDate: normalizedWhen,
+                endDate: savedEndDate,
+                whereSetor: document.getElementById('form-where').value.trim(),
+                who: document.getElementById('form-who').value.trim(),
                 status: statusValue,
-                howmuch: document.getElementById('form-howmuch').value,
-                involved: document.getElementById('form-involved').value,
+                howMuch: document.getElementById('form-howmuch').value.trim(),
+                involved: document.getElementById('form-involved').value.trim(),
                 checklist: checklistArray
             };
 
@@ -911,7 +995,7 @@
             }
 
             if (success) {
-                monthFilter.value = startDateValue.substring(0, 7);
+                if (projectData.startDate) monthFilter.value = projectData.startDate.substring(0, 7);
                 resetForm();
                 await loadProjectsFromCloud();
             }
